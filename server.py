@@ -20,31 +20,34 @@ class Server(Process):
     def run(self):
         print("Server is running...")
 
-        poller_socket = select.poll()
-        poller_socket.register(self.sock, select.POLLIN)
-
-        poller_timer = select.poll()
-        poller_timer.register(self.timer_point, select.POLLIN)
+        poller = select.poll()
+        poller.register(self.sock, select.POLLIN)
+        poller.register(self.timer_point, select.POLLIN)
+        
+        timer_buffer = None
 
         while 1:
-            data, timer_buffer = None, None
-            
-            socket_Event = poller_socket.poll(1000)
+            data = None
+
+            socket_Event = poller.poll(1000)
             for descriptor, Event in socket_Event:
-                data, address = self.sock.recvfrom(1024)
-            
-            timer_Event = poller_timer.poll(1000)
-            for descriptor, Event in timer_Event:
-                timer_buffer = self.timer_point.recv()
+                if descriptor == 6:
+                    timer_buffer = self.timer_point.recv()
+                if descriptor == 8:
+                    data, address = self.sock.recvfrom(1024)
+                    self.send_to_all(timer_buffer, data, address)
+
+    def send_to_all(self, timer_buffer, data, address):
+        message_for_all = ("{0} {1}".format(
+            str(timer_buffer), data.decode('utf-8'))).encode('utf-8')
+
+        print("address: {0}, {1}; message: {2} ---- {3}".format(
+            address[0], address[1], str(timer_buffer), data.decode('utf-8')))
+        
+        if address not in self.clients:
+            self.clients.append(address)
+        for client in self.clients:
+            self.sock.sendto(message_for_all, client)
 
 
-            if data and timer_buffer:
-                print("address: {0}, {1}; message: {2} ---- {3}".format(address[0], address[1], str(timer_buffer), data.decode('utf-8')))
 
-                message_for_all = ("{0} {1}".format(
-                    str(timer_buffer), data.decode('utf-8'))).encode('utf-8')
-
-                if address not in self.clients:
-                    self.clients.append(address)
-                for client in self.clients:
-                    self.sock.sendto(message_for_all, client)
