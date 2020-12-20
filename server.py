@@ -13,21 +13,28 @@ class Server(Process):
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((self.host, self.port))
+        self.sock.setblocking(0)
         self.daemon = True       
 
     def run(self):
         print("Server is running...")
 
         while 1:
-            data, address = self.sock.recvfrom(1024)
-            timer_buffer = self.timer_point.recv()
+            data = None
+            try:
+                data, address = self.sock.recvfrom(1024)
+            except socket.error:
+                pass
+            finally:
+                timer_buffer = self.timer_point.recv()
 
-            print("address: {0}, {1}; message: {2} ---- {3}".format(address[0], address[1], str(timer_buffer), data.decode('utf-8')))
+                if data:
+                    print("address: {0}, {1}; message: {2} ---- {3}".format(address[0], address[1], str(timer_buffer), data.decode('utf-8')))
 
-            message_for_all = ("{0} {1}".format(
-                str(timer_buffer), data.decode('utf-8'))).encode('utf-8')
+                    message_for_all = ("{0} {1}".format(
+                        str(timer_buffer), data.decode('utf-8'))).encode('utf-8')
 
-            if address not in self.clients:
-                self.clients.append(address)
-            for client in self.clients:
-                self.sock.sendto(message_for_all, client)
+                    if address not in self.clients:
+                        self.clients.append(address)
+                    for client in self.clients:
+                        self.sock.sendto(message_for_all, client)
