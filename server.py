@@ -23,6 +23,7 @@ class Server(Process):
         poller = select.poll()
         poller.register(self.sock, select.POLLIN)
         poller.register(self.timer_point, select.POLLIN)
+        self.sock.fileno()
         
         timer_buffer = None
 
@@ -31,9 +32,9 @@ class Server(Process):
 
             socket_Event = poller.poll(1000)
             for descriptor, Event in socket_Event:
-                if descriptor == 6:
+                if descriptor == self.timer_point.fileno():
                     timer_buffer = self.timer_point.recv()
-                if descriptor == 8:
+                if descriptor == self.sock.fileno():
                     data, address = self.sock.recvfrom(1024)
                     self.send_to_all(timer_buffer, data, address)
 
