@@ -2,7 +2,8 @@
 import argparse
 from server import Server
 from client import Client
-
+from timer import Timer
+from multiprocessing import Process, Pipe
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -17,4 +18,13 @@ if __name__ == "__main__":
         client = Client(args.host, args.port)
         client.run_client()
     elif args.type == "server":
-        server = Server(args.host, args.port)
+        timer_point, server_point = Pipe()
+
+        server = Server(timer_point, args.host, args.port)
+        server.start()
+
+        timer = Timer(server_point)
+        timer.start()
+
+        server.join()
+        timer.join()
